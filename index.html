@@ -252,8 +252,9 @@
             getOrderDetailsBySql: function(orderNumber) {
               const deploymentId = 'AKfycbzHjtXOMlcCPYK6j2sGgJMWymJRdUGlRW7IgZB7becAB7lF5BDUyPVIjgcFkHiqxvV2';
               const webAppUrl = `https://script.google.com/macros/s/${deploymentId}/exec?action=getOrderDetails&orderNumber=${encodeURIComponent(orderNumber)}`;
+              const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(webAppUrl)}`;
               
-              fetch(webAppUrl)
+              fetch(proxyUrl)
                 .then(res => {
                   if (!res.ok) throw new Error('API request failed');
                   return res.json();
