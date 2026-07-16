@@ -469,9 +469,16 @@
     function onScanSuccess(decodedText, decodedResult) {
       logToScreen(`Scan Capture: "${decodedText}" (${decodedResult?.result?.format?.formatName || 'Unknown format'})`);
       
-      // Filter out double scans or redundant API requests
-      if (decodedText === lastScannedCode) {
-        logToScreen(`Skipping duplicate scan for code: "${decodedText}"`);
+      // Clean scanned code: strip 'inv' (case-insensitive) and replace with 'ord'
+      let processedText = decodedText.trim();
+      if (/inv/i.test(processedText)) {
+        processedText = processedText.replace(/inv/i, 'ord');
+        logToScreen(`Format Transform: converted "inv" -> "ord": "${processedText}"`);
+      }
+
+      // Filter out double scans or redundant API requests using the processed code
+      if (processedText === lastScannedCode) {
+        logToScreen(`Skipping duplicate scan for code: "${processedText}"`);
         return; 
       }
 
@@ -481,18 +488,18 @@
       }
 
       scanningThrottleTimeout = setTimeout(() => {
-        lastScannedCode = decodedText;
+        lastScannedCode = processedText;
         playBeep();
         
         // Display the scanned code inside manual field automatically for reference
         const inputField = document.getElementById('manual-order-id');
         if (inputField) {
-          inputField.value = decodedText;
-          logToScreen(`Populated input field with: "${decodedText}"`);
+          inputField.value = processedText;
+          logToScreen(`Populated input field with: "${processedText}"`);
         }
         
         // Run SQL transaction
-        executeDatabaseLookup(decodedText);
+        executeDatabaseLookup(processedText);
       }, 300);
     }
 
