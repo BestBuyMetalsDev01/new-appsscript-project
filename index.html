@@ -390,17 +390,10 @@
         const config = {
           fps: 15,
           qrbox: (width, height) => {
-            // Adaptive square box relative to dynamic window sizes
-            const minSize = Math.min(width, height);
-            const boxSize = Math.floor(minSize * 0.7);
-            return { width: boxSize, height: boxSize / 2 }; // Barcode style rectangle bounding box
+            // Make the scanning box much wider and taller for easier 1D barcode targeting
+            return { width: Math.floor(width * 0.8), height: Math.floor(height * 0.6) };
           },
-          aspectRatio: 1.777778, // Force standard 16:9 box ratio
-          formatsToSupport: [ 
-            Html5QrcodeSupportedFormats.CODE_128,
-            Html5QrcodeSupportedFormats.CODE_39,
-            Html5QrcodeSupportedFormats.QR_CODE
-          ]
+          aspectRatio: 1.777778
         };
 
         html5QrScanner.start(
