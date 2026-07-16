@@ -81,7 +81,6 @@
                 <option value="ALL">Auto-Detect All</option>
                 <option value="CODE_128">Code 128 (Linear)</option>
                 <option value="CODE_39">Code 39 (Linear)</option>
-                <option value="QR_CODE">QR Code (2D)</option>
               </select>
               <button id="toggle-camera-btn" onclick="toggleScanner()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg font-medium transition duration-200">
                 Start Camera
@@ -399,8 +398,7 @@
       const readerMap = {
         'CODE_128': ['code_128_reader'],
         'CODE_39':  ['code_39_reader'],
-        'QR_CODE':  ['qr_reader'],
-        'ALL':      ['code_128_reader', 'code_39_reader', 'ean_reader', 'upc_reader', 'qr_reader']
+        'ALL':      ['code_128_reader', 'code_39_reader', 'ean_reader', 'upc_reader']
       };
       const readers = readerMap[formatVal] || readerMap['ALL'];
 
