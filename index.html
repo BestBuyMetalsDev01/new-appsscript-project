@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Barcode Scanner & Dispatch</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Inter Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Lucide Icons (Simple & Beautiful) -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- HTML5 QR Code Scanner Library -->
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    /* Scanner Overlay Line Effect */
+    @keyframes scan {
+      0% { top: 0%; opacity: 0.8; }
+      50% { top: 100%; opacity: 1; }
+      100% { top: 0%; opacity: 0.8; }
+    }
+    .scanner-laser {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(to right, transparent, #ef4444, transparent);
+      box-shadow: 0 0 10px #f87171;
+      animation: scan 2.5s infinite linear;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800">
+
+  <div class="max-w-6xl mx-auto px-4 py-6">
+    <!-- Header -->
+    <header class="flex items-center justify-between mb-8 pb-4 border-b border-slate-200">
+      <div class="flex items-center space-x-3">
+        <div class="p-2.5 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-500/20">
+          <i data-lucide="scan-barcode" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight text-slate-900">Order Dispatch Center</h1>
+          <p class="text-xs text-slate-500">Scan barcode to check staging & product details</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-2 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full text-xs font-semibold border border-emerald-100">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span>Connected to Database</span>
+      </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      
+      <!-- Left Column: Scanner & Input (5 Columns Wide) -->
+      <div class="lg:col-span-5 space-y-6">
+        <!-- Interactive Scanner Card -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+            <h2 class="font-semibold text-slate-800 flex items-center gap-2">
+              <i data-lucide="camera" class="w-4 h-4 text-blue-600"></i>
+              Live Camera Scanner
+            </h2>
+            <button id="toggle-camera-btn" onclick="toggleScanner()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg font-medium transition duration-200">
+              Start Camera
+            </button>
+          </div>
+          
+          <div class="p-5">
+            <!-- QR Scanner Container View -->
+            <div class="relative w-full aspect-video bg-slate-900 rounded-xl overflow-hidden border border-slate-300 flex items-center justify-center">
+              <div id="reader" class="w-full h-full object-cover"></div>
+              
+              <!-- Scanning Indicator Overlays (Visible when active) -->
+              <div id="scanner-indicators" class="absolute inset-0 pointer-events-none border-2 border-dashed border-blue-500 rounded-xl m-4 opacity-50 hidden">
+                <div class="scanner-laser"></div>
+              </div>
+              
+              <!-- Placeholder UI when inactive -->
+              <div id="scanner-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-slate-900">
+                <div class="p-4 bg-slate-800/80 rounded-full mb-3 text-slate-400">
+                  <i data-lucide="video-off" class="w-8 h-8"></i>
+                </div>
+                <p class="text-sm font-medium text-slate-300">Camera is Stopped</p>
+                <p class="text-xs text-slate-500 mt-1 max-w-[200px]">Click 'Start Camera' above to initialize automatic barcode detection.</p>
+              </div>
+            </div>
+            
+            <div class="mt-4 flex items-center justify-between gap-2 text-xs text-slate-500 bg-slate-50 p-3 rounded-xl">
+              <span class="flex items-center gap-1.5">
+                <i data-lucide="info" class="w-3.5 h-3.5 text-slate-400"></i>
+                Supported Formats: Code 128, Code 39, QR Code
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fallback/Manual Action Card -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+          <h2 class="font-semibold text-slate-800 flex items-center gap-2 mb-4">
+            <i data-lucide="keyboard" class="w-4 h-4 text-blue-600"></i>
+            Manual Order Lookup
+          </h2>
+          <div class="space-y-3">
+            <div>
+              <label for="manual-order-id" class="block text-xs font-medium text-slate-500 mb-1.5">Order/Shipment Number</label>
+              <div class="relative">
+                <input type="text" id="manual-order-id" placeholder="e.g., SO-12345" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-slate-50/50 transition duration-200 uppercase" onkeydown="handleEnterKey(event)">
+                <button onclick="handleManualSearch()" class="absolute right-2 top-2 p-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition duration-200">
+                  <i data-lucide="search" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Query Results Display Panel (7 Columns Wide) -->
+      <div class="lg:col-span-7 space-y-6">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 min-h-[400px] flex flex-col">
+          
+          <!-- Results Area Header -->
+          <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">
+            <div>
+              <h2 class="font-bold text-slate-800 text-lg flex items-center gap-2">
+                <i data-lucide="database" class="w-5 h-5 text-blue-600"></i>
+                Retrieval Output
+              </h2>
+              <p class="text-xs text-slate-500 mt-0.5" id="results-count-label">Waiting for scanned input...</p>
+            </div>
+            <button onclick="clearResults()" class="text-xs text-slate-400 hover:text-rose-600 flex items-center gap-1 transition duration-150">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              Reset View
+            </button>
+          </div>
+
+          <!-- Empty State (Initial) -->
+          <div id="state-empty" class="flex-grow flex flex-col items-center justify-center text-center py-12">
+            <div class="w-16 h-16 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center mb-4 border border-blue-100">
+              <i data-lucide="sparkles" class="w-8 h-8"></i>
+            </div>
+            <h3 class="font-semibold text-slate-800 mb-1">Ready for Scanned Order</h3>
+            <p class="text-xs text-slate-500 max-w-sm">Scan a dispatch barcode or enter the code manually to execute queries against your system database tables in real-time.</p>
+          </div>
+
+          <!-- Loading State Spinner -->
+          <div id="state-loading" class="flex-grow flex-col items-center justify-center text-center py-12 hidden">
+            <div class="relative w-12 h-12 mb-4">
+              <div class="absolute inset-0 rounded-full border-4 border-slate-100"></div>
+              <div class="absolute inset-0 rounded-full border-4 border-blue-600 border-t-transparent animate-spin"></div>
+            </div>
+            <h3 class="font-semibold text-slate-800 mb-1">Executing System SQL</h3>
+            <p class="text-xs text-slate-500" id="loading-state-text">Fetching details...</p>
+          </div>
+
+          <!-- Error Alert State Box -->
+          <div id="state-error" class="flex-grow flex-col items-center justify-center text-center py-8 hidden px-4">
+            <div class="w-12 h-12 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mb-3">
+              <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+            </div>
+            <h3 class="font-semibold text-slate-800 mb-1">Database Request Failed</h3>
+            <p class="text-xs text-rose-600 font-mono bg-rose-50 border border-rose-100 p-3 rounded-lg max-w-md break-words mb-3" id="error-message-box">API Error Code: 500...</p>
+            <p class="text-xs text-slate-500">Please check your network, script properties, or SQL aliases.</p>
+          </div>
+
+          <!-- No Data Returned State -->
+          <div id="state-no-data" class="flex-grow flex-col items-center justify-center text-center py-12 hidden">
+            <div class="w-16 h-16 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center mb-4 border border-amber-100">
+              <i data-lucide="search-code" class="w-8 h-8"></i>
+            </div>
+            <h3 class="font-semibold text-slate-800 mb-1" id="no-data-title">Order Not Found</h3>
+            <p class="text-xs text-slate-500 max-w-sm">We made the call, but zero records exist matching that code inside the SQL backend table joins.</p>
+          </div>
+
+          <!-- Found State: Active Results Content -->
+          <div id="state-results" class="flex-grow hidden">
+            <!-- Summary Header Card -->
+            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100/50 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+              <div>
+                <span class="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Active Search</span>
+                <h3 class="text-lg font-bold text-slate-800 mt-0.5" id="summary-order-num">SO-XXXXX</h3>
+              </div>
+              <div class="flex items-center gap-4">
+                <div class="text-left sm:text-right">
+                  <span class="block text-[10px] font-medium text-slate-500">Staging Assigned</span>
+                  <span class="text-sm font-bold text-indigo-700" id="summary-staging-area">NOT DEFINED</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Table Container for Products & System IDs -->
+            <div class="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+              <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                  <thead>
+                    <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500">
+                      <th class="px-4 py-3">Product ID</th>
+                      <th class="px-4 py-3">Staging Area</th>
+                      <th class="px-4 py-3">Detail ID</th>
+                      <th class="px-4 py-3">Pull Label ID</th>
+                    </tr>
+                  </thead>
+                  <tbody id="results-table-body" class="text-xs text-slate-600 divide-y divide-slate-100">
+                    <!-- Appended dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // System Global States
+    let html5QrScanner = null;
+    let audioCtx = null;
+    let isScanning = false;
+    let lastScannedCode = "";
+    let scanningThrottleTimeout = null;
+
+    // Inject local environment mock for google.script.run to route database API queries to the deployed Web App URL
+    if (typeof google === 'undefined' || !google.script || !google.script.run) {
+      window.google = {
+        script: {
+          run: {
+            withSuccessHandler: function(successCallback) {
+              this.success = successCallback;
+              return this;
+            },
+            withFailureHandler: function(failureCallback) {
+              this.failure = failureCallback;
+              return this;
+            },
+            getOrderDetailsBySql: function(orderNumber) {
+              const deploymentId = 'AKfycbzHjtXOMlcCPYK6j2sGgJMWymJRdUGlRW7IgZB7becAB7lF5BDUyPVIjgcFkHiqxvV2';
+              const webAppUrl = `https://script.google.com/macros/s/${deploymentId}/exec?action=getOrderDetails&orderNumber=${encodeURIComponent(orderNumber)}`;
+              
+              fetch(webAppUrl)
+                .then(res => {
+                  if (!res.ok) throw new Error('API request failed');
+                  return res.json();
+                })
+                .then(data => {
+                  if (this.success) this.success(data);
+                })
+                .catch(err => {
+                  if (this.failure) this.failure(err.message || err);
+                });
+            }
+          }
+        }
+      };
+    }
+
+    // Load initial icons
+    lucide.createIcons();
+
+    /**
+     * Triggers a retro synthesized beep sound to provide immediate audio scanner confirmation
+     */
+    function playBeep() {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        
+        // Resume if suspended (browser security block)
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        // Sweet sweet scanner chip synth frequency setup
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(1200, audioCtx.currentTime); // Pitch
+        
+        // Enveloping the volume rapidly to mimic a modern barcode trigger chime
+        gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.02);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+
+        oscillator.start(audioCtx.currentTime);
+        oscillator.stop(audioCtx.currentTime + 0.15);
+      } catch (err) {
+        console.warn("Could not execute synthesizer audio fallback: ", err);
+      }
+    }
+
+    /**
+     * Changes visibility of system interface cards (Empty, Loading, Error, Table data)
+     */
+    function setViewState(state, infoText = "") {
+      const states = ['empty', 'loading', 'error', 'no-data', 'results'];
+      states.forEach(s => {
+        const el = document.getElementById(`state-${s}`);
+        if (s === state) {
+          el.classList.remove('hidden');
+          el.classList.add('flex');
+        } else {
+          el.classList.add('hidden');
+          el.classList.remove('flex');
+        }
+      });
+
+      if (state === 'loading') {
+        document.getElementById('loading-state-text').innerText = infoText;
+      }
+    }
+
+    /**
+     * Event: Listening for input Keyboards
+     */
+    function handleEnterKey(event) {
+      if (event.key === "Enter") {
+        handleManualSearch();
+      }
+    }
+
+    /**
+     * Executes server search on Manual keyboard overrides
+     */
+    function handleManualSearch() {
+      const inputEl = document.getElementById('manual-order-id');
+      const value = inputEl.value.trim();
+      if (!value) return;
+
+      // Unfocus input field to dismiss mobile keyboard
+      inputEl.blur();
+      
+      executeDatabaseLookup(value);
+    }
+
+    /**
+     * Stops camera and resets data states
+     */
+    function clearResults() {
+      document.getElementById('manual-order-id').value = "";
+      document.getElementById('results-count-label').innerText = "Waiting for scanned input...";
+      lastScannedCode = "";
+      setViewState('empty');
+    }
+
+    /**
+     * Toggles hardware camera scanner
+     */
+    function toggleScanner() {
+      const btn = document.getElementById('toggle-camera-btn');
+      const placeholder = document.getElementById('scanner-placeholder');
+      const indicators = document.getElementById('scanner-indicators');
+
+      if (isScanning) {
+        // Stop scanning
+        if (html5QrScanner) {
+          html5QrScanner.stop().then(() => {
+            isScanning = false;
+            btn.innerText = "Start Camera";
+            btn.className = "text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg font-medium transition duration-200";
+            placeholder.classList.remove('hidden');
+            indicators.classList.add('hidden');
+          }).catch(err => {
+            console.error("Failed to cleanly stop camera interface: ", err);
+          });
+        }
+      } else {
+        // Start scanning
+        isScanning = true;
+        btn.innerText = "Stop Camera";
+        btn.className = "text-xs bg-rose-100 hover:bg-rose-200 text-rose-700 py-1.5 px-3 rounded-lg font-medium transition duration-200";
+        placeholder.classList.add('hidden');
+        indicators.classList.remove('hidden');
+
+        // Initialize library instance
+        html5QrScanner = new Html5Qrcode("reader");
+        
+        const config = {
+          fps: 15,
+          qrbox: (width, height) => {
+            // Adaptive square box relative to dynamic window sizes
+            const minSize = Math.min(width, height);
+            const boxSize = Math.floor(minSize * 0.7);
+            return { width: boxSize, height: boxSize / 2 }; // Barcode style rectangle bounding box
+          },
+          aspectRatio: 1.777778 // Force standard 16:9 box ratio
+        };
+
+        html5QrScanner.start(
+          { facingMode: "environment" }, // Prioritizes back-facing macro-focused lens on modern smartphones
+          config,
+          onScanSuccess,
+          onScanFailure
+        ).catch(err => {
+          console.error("Failed to start camera feed: ", err);
+          // Graceful crash reset
+          isScanning = false;
+          btn.innerText = "Start Camera";
+          btn.className = "text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg font-medium transition duration-200";
+          placeholder.classList.remove('hidden');
+          indicators.classList.add('hidden');
+        });
+      }
+    }
+
+    /**
+     * Core barcode processing trigger event
+     */
+    function onScanSuccess(decodedText, decodedResult) {
+      // Filter out double scans or redundant API requests
+      if (decodedText === lastScannedCode) {
+        return; 
+      }
+
+      // Quick throttle timer so scanning does not spam lookups as it captures camera frames
+      if (scanningThrottleTimeout) {
+        clearTimeout(scanningThrottleTimeout);
+      }
+
+      scanningThrottleTimeout = setTimeout(() => {
+        lastScannedCode = decodedText;
+        playBeep();
+        
+        // Display the scanned code inside manual field automatically for reference
+        document.getElementById('manual-order-id').value = decodedText;
+        
+        // Run SQL transaction
+        executeDatabaseLookup(decodedText);
+      }, 300);
+    }
+
+    function onScanFailure(error) {
+      // We ignore scan failures to prevent continuous debug log spam during frame-by-frame analysis
+    }
+
+    /**
+     * Interfaces directly with the Google Apps Script backend through standard client runner
+     */
+    function executeDatabaseLookup(orderNumber) {
+      setViewState('loading', `Connecting to DB for: ${orderNumber}`);
+      document.getElementById('results-count-label').innerText = `Running active search for '${orderNumber}'`;
+
+      // Call Google Apps Script backend method
+      google.script.run
+        .withSuccessHandler(function(responseRows) {
+          processDatabaseResponse(orderNumber, responseRows);
+        })
+        .withFailureHandler(function(err) {
+          showExecutionError(err.message || err);
+        })
+        .getOrderDetailsBySql(orderNumber);
+    }
+
+    /**
+     * Handles processing valid response datasets returned from server
+     */
+    function processDatabaseResponse(orderNumber, rows) {
+      if (!rows || rows.length === 0) {
+        document.getElementById('no-data-title').innerText = `No Records for '${orderNumber}'`;
+        setViewState('no-data');
+        return;
+      }
+
+      // Display overall high-level summary info
+      document.getElementById('summary-order-num').innerText = orderNumber;
+      
+      // Determine staging area from the first record if available
+      const stagingVal = rows[0].strStagingArea || rows[0].STRSTAGINGAREA;
+      document.getElementById('summary-staging-area').innerText = stagingVal ? stagingVal.trim() : "NOT ASSIGNED";
+
+      // Clear previous rows from table body
+      const tableBody = document.getElementById('results-table-body');
+      tableBody.innerHTML = "";
+
+      // Fill in records
+      rows.forEach(row => {
+        // Resolve camelCase or uppercase returned property headers gracefully
+        const productId = row.strProductID || row.STRPRODUCTID || row.strProductID || '—';
+        const staging = row.strStagingArea || row.STRSTAGINGAREA || '—';
+        const detailId = row.orderDetailID || row.ORDERDETAILID || row.cntID || '—';
+        const pullLabelId = row.pullLabelID || row.PULLLABELID || '—';
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50/50 transition duration-150";
+        tr.innerHTML = `
+          <td class="px-4 py-3.5 font-semibold text-slate-900">${productId}</td>
+          <td class="px-4 py-3.5">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${staging ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' : 'bg-slate-100 text-slate-500'}">
+              ${staging || 'None'}
+            </span>
+          </td>
+          <td class="px-4 py-3.5 text-slate-400 font-mono">${detailId}</td>
+          <td class="px-4 py-3.5 text-slate-400 font-mono">${pullLabelId}</td>
+        `;
+        tableBody.appendChild(tr);
+      });
+
+      // Update counters
+      document.getElementById('results-count-label').innerText = `Found ${rows.length} records matching '${orderNumber}'`;
+      setViewState('results');
+    }
+
+    /**
+     * Renders UI crash feedback cards dynamically
+     */
+    function showExecutionError(errorText) {
+      document.getElementById('error-message-box').innerText = errorText;
+      setViewState('error');
+    }
+  </script>
+</body>
+</html>
