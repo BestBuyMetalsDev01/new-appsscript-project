@@ -10,8 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <!-- Lucide Icons (Simple & Beautiful) -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- HTML5 QR Code Scanner Library -->
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <!-- Quagga2: Purpose-built 1D barcode (Code 128, Code 39) scanner -->
+  <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
 
   <style>
     body {
@@ -239,7 +239,7 @@
 
   <script>
     // System Global States
-    let html5QrScanner = null;
+    let quaggaRunning = false;
     let audioCtx = null;
     let isScanning = false;
     let lastScannedCode = "";
@@ -374,7 +374,7 @@
     }
 
     /**
-     * Toggles hardware camera scanner
+     * Toggles hardware camera scanner (Quagga2 - built for 1D barcodes)
      */
     function toggleScanner() {
       const btn = document.getElementById('toggle-camera-btn');
@@ -382,75 +382,78 @@
       const indicators = document.getElementById('scanner-indicators');
 
       if (isScanning) {
-        // Stop scanning
-        if (html5QrScanner) {
-          html5QrScanner.stop().then(() => {
-            isScanning = false;
-            btn.innerText = "Start Camera";
-            btn.className = "text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg font-medium transition duration-200";
-            placeholder.classList.remove('hidden');
-            indicators.classList.add('hidden');
-          }).catch(err => {
-            console.error("Failed to cleanly stop camera interface: ", err);
-          });
-        }
-      } else {
-        // Start scanning
-        isScanning = true;
-        btn.innerText = "Stop Camera";
-        btn.className = "text-xs bg-rose-100 hover:bg-rose-200 text-rose-700 py-1.5 px-3 rounded-lg font-medium transition duration-200";
-        placeholder.classList.add('hidden');
-        indicators.classList.remove('hidden');
+        // Stop Quagga
+        Quagga.stop();
+        quaggaRunning = false;
+        isScanning = false;
+        btn.innerText = "Start Camera";
+        btn.className = "text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg font-medium transition duration-200";
+        placeholder.classList.remove('hidden');
+        indicators.classList.add('hidden');
+        logToScreen('Camera stopped.');
+        return;
+      }
 
-        // Initialize library instance
-        html5QrScanner = new Html5Qrcode("reader");
-        
-        // Parse format configuration selector
-        const formatVal = document.getElementById('barcode-format-selector').value;
-        const scanFormats = [];
-        if (formatVal === 'CODE_128') {
-          scanFormats.push(Html5QrcodeSupportedFormats.CODE_128);
-        } else if (formatVal === 'CODE_39') {
-          scanFormats.push(Html5QrcodeSupportedFormats.CODE_39);
-        } else if (formatVal === 'QR_CODE') {
-          scanFormats.push(Html5QrcodeSupportedFormats.QR_CODE);
-        }
+      // Start scanning
+      const formatVal = document.getElementById('barcode-format-selector').value;
+      const readerMap = {
+        'CODE_128': ['code_128_reader'],
+        'CODE_39':  ['code_39_reader'],
+        'QR_CODE':  ['qr_reader'],
+        'ALL':      ['code_128_reader', 'code_39_reader', 'ean_reader', 'upc_reader', 'qr_reader']
+      };
+      const readers = readerMap[formatVal] || readerMap['ALL'];
 
-        const config = {
-          fps: 15,
-          qrbox: (width, height) => {
-            // Adjust scanner box size dynamically depending on type chosen
-            if (formatVal === 'QR_CODE') {
-              const minSize = Math.min(width, height);
-              const boxSize = Math.floor(minSize * 0.7);
-              return { width: boxSize, height: boxSize };
-            } else {
-              // Longer width, shorter height for linear barcodes (128/39)
-              return { width: Math.floor(width * 0.85), height: Math.floor(height * 0.4) };
-            }
-          },
-          aspectRatio: 1.777778
-        };
+      logToScreen(`Starting Quagga2 with readers: ${readers.join(', ')}`);
 
-        if (scanFormats.length > 0) {
-          config.formatsToSupport = scanFormats;
-        }
+      isScanning = true;
+      btn.innerText = "Stop Camera";
+      btn.className = "text-xs bg-rose-100 hover:bg-rose-200 text-rose-700 py-1.5 px-3 rounded-lg font-medium transition duration-200";
+      placeholder.classList.add('hidden');
+      indicators.classList.remove('hidden');
 
-        html5QrScanner.start(
-          { facingMode: "environment" }, // Prioritizes back-facing macro-focused lens on modern smartphones
-          config,
-          onScanSuccess,
-          onScanFailure
-        ).catch(err => {
-          console.error("Failed to start camera feed: ", err);
-          // Graceful crash reset
+      Quagga.init({
+        inputStream: {
+          name: 'Live',
+          type: 'LiveStream',
+          target: document.getElementById('reader'),
+          constraints: {
+            facingMode: 'environment',
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        },
+        locator: {
+          patchSize: 'medium',
+          halfSample: true
+        },
+        numOfWorkers: 2,
+        frequency: 10,
+        decoder: {
+          readers: readers
+        },
+        locate: true
+      }, function(err) {
+        if (err) {
+          logToScreen(`Quagga init error: ${err}`);
           isScanning = false;
           btn.innerText = "Start Camera";
           btn.className = "text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg font-medium transition duration-200";
           placeholder.classList.remove('hidden');
           indicators.classList.add('hidden');
-        });
-      }
+          return;
+        }
+        logToScreen('Quagga2 initialized. Starting stream...');
+        Quagga.start();
+        quaggaRunning = true;
+      });
+
+      Quagga.onDetected(function(result) {
+        const code = result.codeResult.code;
+        const format = result.codeResult.format;
+        logToScreen(`Quagga Detected: "${code}" [${format}]`);
+        onScanSuccess(code, { result: { format: { formatName: format } } });
+      });
     }
 
     function logToScreen(msg) {
