@@ -39,7 +39,7 @@
 
   <div class="max-w-6xl mx-auto px-4 py-6">
     <!-- Header -->
-    <header class="flex items-center justify-between mb-8 pb-4 border-b border-slate-200">
+    <header class="flex items-center justify-between mb-6 pb-4 border-b border-slate-200">
       <div class="flex items-center space-x-3">
         <div class="p-2.5 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-500/20">
           <i data-lucide="scan-barcode" class="w-6 h-6"></i>
@@ -54,6 +54,15 @@
         <span>Connected to Database</span>
       </div>
     </header>
+
+    <!-- Mobile Console Logger Overlay -->
+    <div id="debug-log-panel" class="mb-6 p-4 bg-slate-900 text-emerald-400 font-mono text-[10px] rounded-xl max-h-[120px] overflow-y-auto border border-slate-800 shadow-inner">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-1.5 mb-1.5 text-slate-400 font-sans text-xs">
+        <span class="flex items-center gap-1"><i data-lucide="terminal" class="w-3.5 h-3.5"></i> Live Debug Console</span>
+        <button onclick="document.getElementById('debug-log-panel-logs').innerHTML = 'Console initialized. Waiting for scans...'" class="text-[10px] hover:text-white">Clear</button>
+      </div>
+      <div id="debug-log-panel-logs" class="space-y-1">Console initialized. Waiting for scans...</div>
+    </div>
 
     <!-- Main Content Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -444,12 +453,24 @@
       }
     }
 
+    function logToScreen(msg) {
+      console.log(msg);
+      const logEl = document.getElementById('debug-log-panel-logs');
+      if (logEl) {
+        const time = new Date().toLocaleTimeString();
+        logEl.innerHTML = `<div>[${time}] ${msg}</div>` + logEl.innerHTML;
+      }
+    }
+
     /**
      * Core barcode processing trigger event
      */
     function onScanSuccess(decodedText, decodedResult) {
+      logToScreen(`Scan Capture: "${decodedText}" (${decodedResult?.result?.format?.formatName || 'Unknown format'})`);
+      
       // Filter out double scans or redundant API requests
       if (decodedText === lastScannedCode) {
+        logToScreen(`Skipping duplicate scan for code: "${decodedText}"`);
         return; 
       }
 
@@ -463,7 +484,11 @@
         playBeep();
         
         // Display the scanned code inside manual field automatically for reference
-        document.getElementById('manual-order-id').value = decodedText;
+        const inputField = document.getElementById('manual-order-id');
+        if (inputField) {
+          inputField.value = decodedText;
+          logToScreen(`Populated input field with: "${decodedText}"`);
+        }
         
         // Run SQL transaction
         executeDatabaseLookup(decodedText);
@@ -471,22 +496,25 @@
     }
 
     function onScanFailure(error) {
-      // We ignore scan failures to prevent continuous debug log spam during frame-by-frame analysis
+      // Quiet fail to avoid logging noise, unless it's a critical hardware block
     }
 
     /**
      * Interfaces directly with the Google Apps Script backend through standard client runner
      */
     function executeDatabaseLookup(orderNumber) {
+      logToScreen(`Initiating Database Lookup for: "${orderNumber}"`);
       setViewState('loading', `Connecting to DB for: ${orderNumber}`);
       document.getElementById('results-count-label').innerText = `Running active search for '${orderNumber}'`;
 
       // Call Google Apps Script backend method
       google.script.run
         .withSuccessHandler(function(responseRows) {
+          logToScreen(`Success: Received ${responseRows ? responseRows.length : 0} rows for "${orderNumber}"`);
           processDatabaseResponse(orderNumber, responseRows);
         })
         .withFailureHandler(function(err) {
+          logToScreen(`Error: Request failed for "${orderNumber}" - ${err.message || err}`);
           showExecutionError(err.message || err);
         })
         .getOrderDetailsBySql(orderNumber);
