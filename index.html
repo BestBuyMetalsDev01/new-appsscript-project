@@ -67,9 +67,17 @@
               <i data-lucide="camera" class="w-4 h-4 text-blue-600"></i>
               Live Camera Scanner
             </h2>
-            <button id="toggle-camera-btn" onclick="toggleScanner()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg font-medium transition duration-200">
-              Start Camera
-            </button>
+            <div class="flex items-center gap-2">
+              <select id="barcode-format-selector" class="text-xs bg-slate-100 text-slate-700 py-1.5 px-2.5 rounded-lg font-medium border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+                <option value="ALL">Auto-Detect All</option>
+                <option value="CODE_128">Code 128 (Linear)</option>
+                <option value="CODE_39">Code 39 (Linear)</option>
+                <option value="QR_CODE">QR Code (2D)</option>
+              </select>
+              <button id="toggle-camera-btn" onclick="toggleScanner()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg font-medium transition duration-200">
+                Start Camera
+              </button>
+            </div>
           </div>
           
           <div class="p-5">
@@ -387,14 +395,36 @@
         // Initialize library instance
         html5QrScanner = new Html5Qrcode("reader");
         
+        // Parse format configuration selector
+        const formatVal = document.getElementById('barcode-format-selector').value;
+        const scanFormats = [];
+        if (formatVal === 'CODE_128') {
+          scanFormats.push(Html5QrcodeSupportedFormats.CODE_128);
+        } else if (formatVal === 'CODE_39') {
+          scanFormats.push(Html5QrcodeSupportedFormats.CODE_39);
+        } else if (formatVal === 'QR_CODE') {
+          scanFormats.push(Html5QrcodeSupportedFormats.QR_CODE);
+        }
+
         const config = {
           fps: 15,
           qrbox: (width, height) => {
-            // Make the scanning box much wider and taller for easier 1D barcode targeting
-            return { width: Math.floor(width * 0.8), height: Math.floor(height * 0.6) };
+            // Adjust scanner box size dynamically depending on type chosen
+            if (formatVal === 'QR_CODE') {
+              const minSize = Math.min(width, height);
+              const boxSize = Math.floor(minSize * 0.7);
+              return { width: boxSize, height: boxSize };
+            } else {
+              // Longer width, shorter height for linear barcodes (128/39)
+              return { width: Math.floor(width * 0.85), height: Math.floor(height * 0.4) };
+            }
           },
           aspectRatio: 1.777778
         };
+
+        if (scanFormats.length > 0) {
+          config.formatsToSupport = scanFormats;
+        }
 
         html5QrScanner.start(
           { facingMode: "environment" }, // Prioritizes back-facing macro-focused lens on modern smartphones
