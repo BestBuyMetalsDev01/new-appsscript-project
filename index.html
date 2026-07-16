@@ -395,7 +395,12 @@
             const boxSize = Math.floor(minSize * 0.7);
             return { width: boxSize, height: boxSize / 2 }; // Barcode style rectangle bounding box
           },
-          aspectRatio: 1.777778 // Force standard 16:9 box ratio
+          aspectRatio: 1.777778, // Force standard 16:9 box ratio
+          formatsToSupport: [ 
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.QR_CODE
+          ]
         };
 
         html5QrScanner.start(
