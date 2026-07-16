@@ -33,6 +33,25 @@
       animation: scan 2.5s infinite linear;
       z-index: 10;
     }
+    /* Quagga Video Frame Rules */
+    #reader {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    #reader video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    #reader canvas.drawingBuffer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body class="bg-slate-50 min-h-screen text-slate-800">
@@ -71,24 +90,24 @@
       <div class="lg:col-span-5 space-y-6">
         <!-- Interactive Scanner Card -->
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+          <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h2 class="font-semibold text-slate-800 flex items-center gap-2">
               <i data-lucide="camera" class="w-4 h-4 text-blue-600"></i>
               Live Camera Scanner
             </h2>
-            <div class="flex items-center gap-2">
-              <select id="barcode-format-selector" class="text-xs bg-slate-100 text-slate-700 py-1.5 px-2.5 rounded-lg font-medium border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+              <select id="barcode-format-selector" class="text-xs bg-slate-100 text-slate-700 py-1.5 px-2.5 rounded-lg font-medium border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 flex-grow sm:flex-grow-0">
                 <option value="ALL">Auto-Detect All</option>
                 <option value="CODE_128">Code 128 (Linear)</option>
                 <option value="CODE_39">Code 39 (Linear)</option>
               </select>
-              <button id="toggle-camera-btn" onclick="toggleScanner()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg font-medium transition duration-200">
+              <button id="toggle-camera-btn" onclick="toggleScanner()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 px-3 rounded-lg font-medium transition duration-200 shadow-sm whitespace-nowrap">
                 Start Camera
               </button>
             </div>
           </div>
           
-          <div class="p-5">
+          <div class="p-4 sm:p-5">
             <!-- QR Scanner Container View -->
             <div class="relative w-full aspect-video bg-slate-900 rounded-xl overflow-hidden border border-slate-300 flex items-center justify-center">
               <div id="reader" class="w-full h-full object-cover"></div>
